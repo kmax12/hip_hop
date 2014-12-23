@@ -1,0 +1,2 @@
+gensim
+scikit-learn
