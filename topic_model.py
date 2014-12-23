@@ -1,10 +1,8 @@
 from sklearn.feature_extraction.text import CountVectorizer
-import json
 import cPickle as pickle
 import gensim
 import logging
-from collections import defaultdict
-import numpy as np 
+
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
@@ -137,71 +135,3 @@ class TopicModel():
 
     def get_topics(self):
         return [Topic(self, i) for i in range(self.num_topics)]
-
-
-
-
-def group_by(songs,key):
-	dist = defaultdict(list)
-
-	#aggregate by key
-	for s in songs:
-		k = s.get(key, None)
-		dist[k].append(s['topic_dist']) 
-
-	#normalize
-	for v in dist:
-		dist[v] =	[sum(x) for x in zip(*dist[v])]
-		l = np.sum(dist[v])
-		dist[v] = [t/l for t in dist[v]]
-
-
-	return dist
-
-
-if __name__ == "__main__":
-		USE_MODEL_CACHE = True
-		MODEL_CACHE_NAME = 'topic_model_cache'
-
-		#load in songs
-		songs = json.load(open('songs.json', 'r'))['results']['details']
-
-		#process album metadata to get year data
-		albums = json.load(open('album_meta.json', 'r'))['results']['metadata']
-		album_years = {}
-		for a in albums:
-			year = a['year'][1:-1]
-			if year != "":
-				album_years[a['url']] = int(year)
-		#add year data to songs
-		for i,s in enumerate(songs):
-			if 'album_url' in songs[i]:
-				album_url = songs[i]['album_url']
-				songs[i]['year'] = album_years.get(album_url, None)
-
-
-
-		#grab just lyric text from songs
-		songs_text = [s['lyrics'] for s in songs]
-
-
-		if not USE_MODEL_CACHE:
-			model = TopicModel()
-			model.build(songs_text)
-			model.save(MODEL_CACHE_NAME)
-		else:
-			print 'Loading topic model from cache'
-			model = TopicModel.load(MODEL_CACHE_NAME)
-
-
-		topics = model.model_docs(songs_text)
-
-
-		#add topic distrubtions back to songs list
-		for i,t_dist in enumerate(topics):
-			songs[i]['topic_dist'] = gensim.matutils.sparse2full(t_dist, model.num_topics)
-
-
-
-
-		print group_by(songs, 'year')
