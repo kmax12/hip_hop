@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+</head>
+<body>
+    <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+    <script src="http://code.highcharts.com/highcharts.js"></script>
+    <script src="http://code.highcharts.com/modules/exporting.js"></script>
+    <script src="http://code.highcharts.com/highcharts-3d.js"></script>
+
+    <div id="container-topic-year" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+    <button id="update">Toggle weighted/unweighted</button>
+    <div id="container-artist-sim" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+    <div id="container-song-sim" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+
+    <script>
+$(function () {
+
+    $.when( $.getJSON( "/topic_year_unweighted.json" ), $.getJSON( "/topic_year_weighted.json" ), $.getJSON( "/topic_info.json" ), $.getJSON( "/artist_similarities.json" ), $.getJSON( "/title_similarities.json" ) ).done(function( a1, a2, a3, a4, a5) {
+        this.weighted = a1[0];
+        this.unweighted = a2[0];
+        var topic_info = a3[0];
+        this.artist_sim = a4[0];
+        this.song_sim = a5[0];
+        this.is_weighted = false;
+        this.timeline = new Highcharts.Chart({
+            chart: {
+                renderTo: 'container-topic-year',
+                type: 'spline'
+            },
+            title: {
+                text: 'Topics by year'
+            },
+            subtitle: {
+                text: 'Unweigted'
+            },
+            xAxis: {
+                title: {
+                    text: 'Year'
+                }
+            },
+            yAxis: {
+                title: {
+                    text: 'Proportion'
+                },
+                min: 0,
+                max:100
+            },
+            legend : {
+                enabled : false
+            },
+            tooltip: {
+                useHTML: true,
+                formatter: function () {
+                    var title = "<b>" + this.series.name + "</b><br>"
+                    var words = "Top words: " + topic_info[this.series.name].words.join();
+                    return  title + words;
+                }
+            },
+            series: JSON.parse(JSON.stringify(this.unweighted))
+        });
+
+         // Give the points a 3D feel by adding a radial gradient
+        Highcharts.getOptions().colors = $.map(Highcharts.getOptions().colors, function (color) {
+            return {
+                radialGradient: {
+                    cx: 0.4,
+                    cy: 0.3,
+                    r: 0.5
+                },
+                stops: [
+                    [0, color],
+                    [1, Highcharts.Color(color).brighten(-0.2).get('rgb')]
+                ]
+            };
+        });
+
+        
+        this.artist = new Highcharts.Chart({
+            chart: {
+                renderTo: "container-artist-sim",
+                type: 'scatter',
+                // zoomType: 'xy',
+                options3d: {
+                    enabled: true,
+                    alpha: 10,
+                    beta: 30,
+                    depth: 250,
+                    viewDistance: 5,
+
+                    frame: {
+                        bottom: { size: 1, color: 'rgba(0,0,0,0.02)' },
+                        back: { size: 1, color: 'rgba(0,0,0,0.04)' },
+                        side: { size: 1, color: 'rgba(0,0,0,0.06)' }
+                    }
+                }
+            },
+            title: {
+                text: 'Artist Simalarties'
+            },
+            subtitle: {
+                text: 'After applying pca'
+            },
+            legend: {
+                enabled: false
+            },
+            plotOptions: {
+                scatter: {
+                    marker: {
+                        radius: 5,
+                        states: {
+                            hover: {
+                                enabled: true,
+                                lineColor: 'rgb(100,100,100)'
+                            }
+                        }
+                    },
+                    states: {
+                        hover: {
+                            marker: {
+                                enabled: false
+                            }
+                        }
+                    },
+                    tooltip: {
+                        headerFormat: '<b>{series.name}</b><br>',
+                        pointFormat: '{point.x} cm, {point.y} kg'
+                    }
+                }
+            },
+            series: [this.artist_sim]
+        });
+
+        this.song = new Highcharts.Chart({
+            chart: {
+                renderTo: "container-song-sim",
+                type: 'scatter',
+                // options3d: {
+                //     enabled: true,
+                //     alpha: 10,
+                //     beta: 30,
+                //     depth: 250,
+                //     viewDistance: 5,
+
+                //     frame: {
+                //         bottom: { size: 1, color: 'rgba(0,0,0,0.02)' },
+                //         back: { size: 1, color: 'rgba(0,0,0,0.04)' },
+                //         side: { size: 1, color: 'rgba(0,0,0,0.06)' }
+                //     }
+                // }
+            },
+            title: {
+                text: 'Song Simalarties'
+            },
+            subtitle: {
+                text: 'After applying pcs'
+            },
+            legend: {
+                enabled: false
+            },
+            // yAxis: {
+            //     min: -.5,
+            //     max: .5,
+            //     title: null
+            // },
+            // xAxis: {
+            //     min: -.5,
+            //     max: .5,
+            //     gridLineWidth: 1
+            // },
+            zAxis: {
+                min: -.5,
+                max: .5
+            },
+            plotOptions: {
+                scatter: {
+                    marker: {
+                        radius: 5,
+                        states: {
+                            hover: {
+                                enabled: true,
+                                lineColor: 'rgb(100,100,100)'
+                            }
+                        }
+                    },
+                    states: {
+                        hover: {
+                            marker: {
+                                enabled: false
+                            }
+                        }
+                    },
+                    tooltip: {
+                        formatter: function() {
+                            console.log(this.point.song_title)
+                            return this.point.song_title;
+                        }
+                    }
+                }
+            },
+            series: [this.song_sim]
+        });
+
+        $(this.song.container).bind('mousedown.hc touchstart.hc', function (e) {
+            console.log(e)
+            var chart = this.song
+            e = chart.pointer.normalize(e);
+
+            var posX = e.pageX,
+                posY = e.pageY,
+                alpha = chart.options.chart.options3d.alpha,
+                beta = chart.options.chart.options3d.beta,
+                newAlpha,
+                newBeta,
+                sensitivity = 5; // lower is more sensitive
+
+            $(document).bind({
+                'mousemove.hc touchdrag.hc': function (e) {
+                    // Run beta
+                    newBeta = beta + (posX - e.pageX) / sensitivity;
+                    newBeta = Math.min(100, Math.max(-100, newBeta));
+                    chart.options.chart.options3d.beta = newBeta;
+
+                    // Run alpha
+                    newAlpha = alpha + (e.pageY - posY) / sensitivity;
+                    newAlpha = Math.min(100, Math.max(-100, newAlpha));
+                    chart.options.chart.options3d.alpha = newAlpha;
+
+                    chart.redraw(false);
+                },
+                'mouseup touchend': function () {
+                    $(document).unbind('.hc');
+                }
+            });
+        }.bind(this));
+
+        $('#update').click(
+            function () {
+                if (this.is_weighted){
+                    this.data = this.unweighted;
+                    var subtitle = "Unweighted"
+                } else {
+                    this.data = this.weighted;
+                    var subtitle = "Weighted"
+                }
+                this.is_weighted = !this.is_weighted;
+                this.data = JSON.parse(JSON.stringify(this.data))
+
+                for (var i=0; i<this.timeline.series.length; i++){
+                    $.each(this.timeline.series[i].data, function (j, point) {
+                        // console.log(this.data[j])
+                         point.update(this.data[i]['data'][j], false);
+                    }.bind(this));
+                }
+
+
+                this.timeline.setTitle(null, { text: subtitle});
+                this.timeline.redraw();
+            }.bind(this)
+        );
+    });
+});
+</script>
+</body>
+
+</html>
