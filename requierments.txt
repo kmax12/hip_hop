@@ -1,2 +1,5 @@
 gensim
 scikit-learn
+matplotlib
+cython
+tsne
